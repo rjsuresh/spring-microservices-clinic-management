@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinic Management</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #1a6ebd;
+      --primary-dark: #145299;
+      --danger: #d9534f;
+      --danger-dark: #c9302c;
+      --success: #5cb85c;
+      --warning: #f0ad4e;
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --border: #dde3ec;
+      --text: #1e2d40;
+      --muted: #6b7a8d;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: .5px; }
+    .header-badge {
+      font-size: .78rem;
+      background: rgba(255,255,255,.2);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; min-height: calc(100vh - 60px); }
+
+    /* ── Sidebar nav ── */
+    nav {
+      width: 220px;
+      background: #fff;
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      flex-shrink: 0;
+    }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: .92rem;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .15s, border-color .15s;
+    }
+    nav a:hover { background: #f0f4f8; }
+    nav a.active { background: #e8f0fb; border-left-color: var(--primary); color: var(--primary); font-weight: 600; }
+    nav .icon { font-size: 1.1rem; width: 22px; text-align: center; }
+    nav .section-label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      padding: 16px 20px 6px;
+    }
+
+    /* ── Main content ── */
+    main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Stats row ── */
+    .stats { display: flex; gap: 20px; margin-bottom: 28px; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 150px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      text-align: center;
+    }
+    .stat-card .num { font-size: 2.2rem; font-weight: 700; color: var(--primary); }
+    .stat-card .lbl { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .section-header h2 { font-size: 1.15rem; font-weight: 600; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      border: none; border-radius: var(--radius);
+      font-size: .88rem; font-weight: 500;
+      cursor: pointer; transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-danger  { background: var(--danger); color: #fff; padding: 5px 10px; font-size: .8rem; }
+    .btn-danger:hover  { background: var(--danger-dark); }
+    .btn-edit    { background: #f4f6fa; color: var(--text); border: 1px solid var(--border); padding: 5px 10px; font-size: .8rem; }
+    .btn-edit:hover    { background: #e8f0fb; color: var(--primary); }
+
+    /* ── Table ── */
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; font-size: .78rem; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--muted);
+      padding: 12px 16px; background: #f7f9fc;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 12px 16px; font-size: .9rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f7f9fc; }
+
+    .empty-row td {
+      text-align: center; color: var(--muted);
+      font-style: italic; padding: 32px;
+    }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .badge-blue   { background: #dbeafe; color: #1e40af; }
+    .badge-green  { background: #dcfce7; color: #166534; }
+    .badge-purple { background: #ede9fe; color: #5b21b6; }
+    .badge-pink   { background: #fce7f3; color: #9d174d; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border-radius: 12px;
+      width: 520px; max-width: 95vw;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      animation: slideUp .2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 { font-size: 1rem; font-weight: 600; }
+    .modal-close {
+      background: none; border: none; font-size: 1.3rem; cursor: pointer;
+      color: var(--muted); line-height: 1;
+    }
+    .modal-close:hover { color: var(--danger); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+
+    /* ── Form ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .field label { display: block; font-size: .8rem; font-weight: 500; color: var(--muted); margin-bottom: 5px; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: .9rem; color: var(--text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,110,189,.12);
+    }
+    .field textarea { resize: vertical; min-height: 70px; }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      background: #1e2d40; color: #fff;
+      padding: 10px 16px; border-radius: 8px;
+      font-size: .85rem; min-width: 220px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.3);
+      animation: toastIn .25s ease;
+      display: flex; align-items: center; gap: 8px;
+    }
+    @keyframes toastIn { from { transform: translateX(30px); opacity: 0; } }
+    .toast.success { background: #166534; }
+    .toast.error   { background: var(--danger-dark); }
+
+    /* ── Loading ── */
+    .loading { text-align: center; color: var(--muted); padding: 40px; font-size: .9rem; }
+    .spinner {
+      display: inline-block; width: 20px; height: 20px;
+      border: 2px solid var(--border); border-top-color: var(--primary);
+      border-radius: 50%; animation: spin .6s linear infinite; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Search ── */
+    .search-bar {
+      display: flex; gap: 10px; margin-bottom: 16px;
+    }
+    .search-bar input {
+      flex: 1; padding: 9px 12px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: .9rem;
+    }
+    .search-bar input:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,110,189,.12);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🏥 Clinic Management System</h1>
+  <span class="header-badge" id="header-status">Connecting…</span>
+</header>
+
+<div class="layout">
+  <nav>
+    <div class="section-label">Overview</div>
+    <a onclick="showPage('dashboard')" id="nav-dashboard" class="active">
+      <span class="icon">📊</span> Dashboard
+    </a>
+    <div class="section-label">Management</div>
+    <a onclick="showPage('doctors')" id="nav-doctors">
+      <span class="icon">👨‍⚕️</span> Doctors
+    </a>
+    <a onclick="showPage('patients')" id="nav-patients">
+      <span class="icon">🧑‍🤝‍🧑</span> Patients
+    </a>
+    <a onclick="showPage('appointments')" id="nav-appointments">
+      <span class="icon">📅</span> Appointments
+    </a>
+    <div class="section-label">System</div>
+    <a onclick="showPage('health')" id="nav-health">
+      <span class="icon">🔍</span> Health
+    </a>
+  </nav>
+
+  <main>
+
+    <!-- ═══════════════════ DASHBOARD ═══════════════════ -->
+    <div class="page active" id="page-dashboard">
+      <div class="section-header">
+        <h2>Dashboard</h2>
+        <button class="btn btn-primary" onclick="loadDashboard()">↻ Refresh</button>
+      </div>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="num" id="stat-doctors">–</div>
+          <div class="lbl">Doctors</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-patients">–</div>
+          <div class="lbl">Patients</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-appointments">–</div>
+          <div class="lbl">Appointments</div>
+        </div>
+      </div>
+      <div id="dashboard-loading" class="loading"><span class="spinner"></span>Loading summary…</div>
+    </div>
+
+    <!-- ═══════════════════ DOCTORS ═══════════════════ -->
+    <div class="page" id="page-doctors">
+      <div class="section-header">
+        <h2>Doctors</h2>
+        <button class="btn btn-primary" onclick="openDoctorModal()">+ Add Doctor</button>
+      </div>
+      <div class="search-bar">
+        <input id="doctor-search" placeholder="Search by name, CIN, or speciality…" oninput="filterTable('doctor')" />
+      </div>
+      <div class="table-wrap">
+        <table id="doctor-table">
+          <thead>
+            <tr>
+              <th>CIN</th><th>Full Name</th><th>Mobile</th><th>Gender</th><th>Speciality</th><th style="width:130px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="doctor-tbody">
+            <tr class="empty-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ PATIENTS ═══════════════════ -->
+    <div class="page" id="page-patients">
+      <div class="section-header">
+        <h2>Patients</h2>
+        <button class="btn btn-primary" onclick="openPatientModal()">+ Add Patient</button>
+      </div>
+      <div class="search-bar">
+        <input id="patient-search" placeholder="Search by name, CIN, or mobile…" oninput="filterTable('patient')" />
+      </div>
+      <div class="table-wrap">
+        <table id="patient-table">
+          <thead>
+            <tr>
+              <th>CIN</th><th>Full Name</th><th>Age</th><th>Gender</th><th>Mobile</th><th style="width:130px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="patient-tbody">
+            <tr class="empty-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ APPOINTMENTS ═══════════════════ -->
+    <div class="page" id="page-appointments">
+      <div class="section-header">
+        <h2>Appointments</h2>
+        <button class="btn btn-primary" onclick="openAppointmentModal()">+ Add Appointment</button>
+      </div>
+      <div class="search-bar">
+        <input id="appointment-search" placeholder="Search by patient CIN, cause, or doctor…" oninput="filterTable('appointment')" />
+      </div>
+      <div class="table-wrap">
+        <table id="appointment-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Date</th><th>Cause</th><th>Patient CIN</th><th>Doctor</th><th style="width:80px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="appointment-tbody">
+            <tr class="empty-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ HEALTH ═══════════════════ -->
+    <div class="page" id="page-health">
+      <div class="section-header">
+        <h2>Service Health</h2>
+        <button class="btn btn-primary" onclick="loadHealth()">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Service</th><th>Status</th><th>Detail</th></tr>
+          </thead>
+          <tbody id="health-tbody">
+            <tr class="empty-row"><td colspan="3"><span class="spinner"></span> Checking…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     DOCTOR MODAL
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="doctor-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="doctor-modal-title">Add Doctor</h3>
+      <button class="modal-close" onclick="closeModal('doctor-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>CIN *</label>
+          <input id="d-cin" placeholder="e.g. D001" />
+        </div>
+        <div class="field"><label>Full Name *</label>
+          <input id="d-fullname" placeholder="Dr. First Last" />
+        </div>
+        <div class="field"><label>Mobile *</label>
+          <input id="d-mobile" placeholder="0600000000" />
+        </div>
+        <div class="field"><label>Gender *</label>
+          <select id="d-gender">
+            <option value="">— select —</option>
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+        <div class="field full"><label>Speciality *</label>
+          <input id="d-specialite" placeholder="e.g. Cardiology" />
+        </div>
+        <input type="hidden" id="d-id" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-edit" onclick="closeModal('doctor-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDoctor()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PATIENT MODAL
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="patient-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="patient-modal-title">Add Patient</h3>
+      <button class="modal-close" onclick="closeModal('patient-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>CIN *</label>
+          <input id="p-cin" placeholder="e.g. P001" />
+        </div>
+        <div class="field"><label>Full Name *</label>
+          <input id="p-fullname" placeholder="First Last" />
+        </div>
+        <div class="field"><label>Mobile *</label>
+          <input id="p-mobile" placeholder="0600000000" />
+        </div>
+        <div class="field"><label>Age *</label>
+          <input id="p-age" type="number" min="0" max="150" placeholder="35" />
+        </div>
+        <div class="field"><label>Gender *</label>
+          <select id="p-gender">
+            <option value="">— select —</option>
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+        <input type="hidden" id="p-id" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-edit" onclick="closeModal('patient-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePatient()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     APPOINTMENT MODAL
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="appointment-modal">
+  <div class="modal" style="width:600px">
+    <div class="modal-header">
+      <h3 id="appt-modal-title">Add Appointment</h3>
+      <button class="modal-close" onclick="closeModal('appointment-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:#f7f9fc;border-radius:6px;border:1px solid var(--border)">
+        ℹ️ Creating an appointment also creates/links the patient. Fill in the patient's details below.
+      </p>
+      <div class="form-grid">
+        <!-- Appointment -->
+        <div class="field full"><label style="color:var(--primary);font-weight:700">Appointment</label></div>
+        <div class="field"><label>Date</label>
+          <input id="a-date" type="datetime-local" />
+        </div>
+        <div class="field"><label>Cause *</label>
+          <input id="a-cause" placeholder="Reason for visit" />
+        </div>
+        <!-- Doctor -->
+        <div class="field full"><label style="color:var(--primary);font-weight:700;margin-top:6px">Doctor</label></div>
+        <div class="field full"><label>Doctor Name *</label>
+          <select id="a-medecin-select">
+            <option value="">— select a doctor —</option>
+          </select>
+        </div>
+        <!-- Patient -->
+        <div class="field full"><label style="color:var(--primary);font-weight:700;margin-top:6px">Patient</label></div>
+        <div class="field"><label>Patient CIN *</label>
+          <input id="a-patient-cin" placeholder="e.g. P001" />
+        </div>
+        <div class="field"><label>Full Name *</label>
+          <input id="a-patient-fullname" placeholder="First Last" />
+        </div>
+        <div class="field"><label>Mobile *</label>
+          <input id="a-patient-mobile" placeholder="0600000000" />
+        </div>
+        <div class="field"><label>Age *</label>
+          <input id="a-patient-age" type="number" min="0" max="150" placeholder="35" />
+        </div>
+        <div class="field"><label>Gender *</label>
+          <select id="a-patient-gender">
+            <option value="">— select —</option>
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+        <input type="hidden" id="a-id" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-edit" onclick="closeModal('appointment-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAppointment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// Config
+// ══════════════════════════════════════════════════════════
+const API = '';  // same-origin (served by FastAPI)
+
+// ══════════════════════════════════════════════════════════
+// Page router
+// ══════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'dashboard')    loadDashboard();
+  if (name === 'doctors')      loadDoctors();
+  if (name === 'patients')     loadPatients();
+  if (name === 'appointments') loadAppointments();
+  if (name === 'health')       loadHealth();
+}
+
+// ══════════════════════════════════════════════════════════
+// API helpers
+// ══════════════════════════════════════════════════════════
+async function apiCall(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  const text = await res.text();
+  if (!res.ok) {
+    let msg = text;
+    try { msg = JSON.parse(text).detail || text; } catch(_) {}
+    throw new Error(`HTTP ${res.status}: ${msg}`);
+  }
+  try { return JSON.parse(text); } catch(_) { return text; }
+}
+
+// ══════════════════════════════════════════════════════════
+// Toast
+// ══════════════════════════════════════════════════════════
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = (type === 'success' ? '✓ ' : '✗ ') + msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ══════════════════════════════════════════════════════════
+// Modal helpers
+// ══════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ══════════════════════════════════════════════════════════
+// Filter tables
+// ══════════════════════════════════════════════════════════
+function filterTable(type) {
+  const input = document.getElementById(type + '-search').value.toLowerCase();
+  const tbody = document.getElementById(type + '-tbody');
+  Array.from(tbody.rows).forEach(row => {
+    if (row.classList.contains('empty-row')) return;
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(input) ? '' : 'none';
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// Dashboard
+// ══════════════════════════════════════════════════════════
+async function loadDashboard() {
+  document.getElementById('dashboard-loading').style.display = 'block';
+  try {
+    const data = await apiCall('GET', '/admin/summary');
+    document.getElementById('stat-doctors').textContent      = data.total_medecins ?? 0;
+    document.getElementById('stat-patients').textContent     = data.total_patients ?? 0;
+    document.getElementById('stat-appointments').textContent = data.total_rendezvous ?? 0;
+    document.getElementById('header-status').textContent = '✓ All services up';
+    document.getElementById('header-status').style.background = 'rgba(92,184,92,.35)';
+  } catch(e) {
+    document.getElementById('header-status').textContent = '⚠ Service error';
+    document.getElementById('header-status').style.background = 'rgba(217,83,79,.35)';
+    toast('Could not load summary: ' + e.message, 'error');
+  }
+  document.getElementById('dashboard-loading').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════
+// Health
+// ══════════════════════════════════════════════════════════
+async function loadHealth() {
+  const tbody = document.getElementById('health-tbody');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="3"><span class="spinner"></span> Checking…</td></tr>';
+  try {
+    const data = await apiCall('GET', '/health/services');
+    tbody.innerHTML = '';
+    for (const [svc, info] of Object.entries(data)) {
+      const status = info.status || 'UNKNOWN';
+      const color  = status === 'UP' ? 'badge-green' : 'badge-pink';
+      const detail = Object.entries(info).filter(([k]) => k !== 'status')
+                           .map(([k,v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
+      tbody.innerHTML += `<tr>
+        <td>${svc}</td>
+        <td><span class="badge ${color}">${status}</span></td>
+        <td style="font-size:.8rem;color:var(--muted)">${detail}</td>
+      </tr>`;
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="3">Error: ${e.message}</td></tr>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── DOCTORS ──────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+let doctors = [];
+
+async function loadDoctors() {
+  const tbody = document.getElementById('doctor-tbody');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>';
+  try {
+    doctors = await apiCall('GET', '/admin/medecins');
+    renderDoctors();
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function renderDoctors() {
+  const tbody = document.getElementById('doctor-tbody');
+  if (!doctors.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No doctors found. Click "+ Add Doctor" to get started.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = doctors.map(d => `
+    <tr>
+      <td>${d.cin}</td>
+      <td><strong>${d.fullname}</strong></td>
+      <td>${d.mobile}</td>
+      <td><span class="badge badge-blue">${d.gender}</span></td>
+      <td><span class="badge badge-purple">${d.specialite}</span></td>
+      <td>
+        <button class="btn btn-edit" onclick="editDoctor('${d.cin}')">✏ Edit</button>
+        <button class="btn btn-danger" onclick="deleteDoctor('${d.cin}')">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openDoctorModal(cin) {
+  clearForm(['d-id','d-cin','d-fullname','d-mobile','d-gender','d-specialite']);
+  document.getElementById('doctor-modal-title').textContent = 'Add Doctor';
+  document.getElementById('d-cin').disabled = false;
+  openModal('doctor-modal');
+}
+
+function editDoctor(cin) {
+  const d = doctors.find(x => x.cin === cin);
+  if (!d) return;
+  document.getElementById('doctor-modal-title').textContent = 'Edit Doctor';
+  document.getElementById('d-id').value        = d.id || '';
+  document.getElementById('d-cin').value       = d.cin;
+  document.getElementById('d-cin').disabled    = true;  // CIN is the key — don't allow change
+  document.getElementById('d-fullname').value  = d.fullname;
+  document.getElementById('d-mobile').value    = d.mobile;
+  document.getElementById('d-gender').value    = d.gender;
+  document.getElementById('d-specialite').value = d.specialite;
+  openModal('doctor-modal');
+}
+
+async function saveDoctor() {
+  const isEdit = !!document.getElementById('d-id').value;
+  const payload = {
+    id:         isEdit ? parseInt(document.getElementById('d-id').value) : undefined,
+    cin:        document.getElementById('d-cin').value.trim(),
+    fullname:   document.getElementById('d-fullname').value.trim(),
+    mobile:     document.getElementById('d-mobile').value.trim(),
+    gender:     document.getElementById('d-gender').value,
+    specialite: document.getElementById('d-specialite').value.trim(),
+  };
+  if (!payload.cin || !payload.fullname || !payload.mobile || !payload.gender || !payload.specialite) {
+    toast('Please fill in all required fields.', 'error'); return;
+  }
+  try {
+    if (isEdit) {
+      await apiCall('PUT', '/admin/medecins', payload);
+      toast('Doctor updated successfully.');
+    } else {
+      await apiCall('POST', '/admin/medecins', payload);
+      toast('Doctor added successfully.');
+    }
+    closeModal('doctor-modal');
+    loadDoctors();
+    loadDashboard();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function deleteDoctor(cin) {
+  if (!confirm(`Delete doctor ${cin}? This cannot be undone.`)) return;
+  try {
+    await apiCall('DELETE', `/admin/medecins/${cin}`);
+    toast('Doctor deleted.');
+    loadDoctors();
+    loadDashboard();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── PATIENTS ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+let patients = [];
+
+async function loadPatients() {
+  const tbody = document.getElementById('patient-tbody');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>';
+  try {
+    patients = await apiCall('GET', '/admin/patients');
+    renderPatients();
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function renderPatients() {
+  const tbody = document.getElementById('patient-tbody');
+  if (!patients.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No patients found. Click "+ Add Patient" to get started.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = patients.map(p => `
+    <tr>
+      <td>${p.cin}</td>
+      <td><strong>${p.fullname}</strong></td>
+      <td>${p.age}</td>
+      <td><span class="badge badge-green">${p.gender}</span></td>
+      <td>${p.mobile}</td>
+      <td>
+        <button class="btn btn-edit" onclick="editPatient('${p.cin}')">✏ Edit</button>
+        <button class="btn btn-danger" onclick="deletePatient('${p.cin}')">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openPatientModal() {
+  clearForm(['p-id','p-cin','p-fullname','p-mobile','p-age','p-gender']);
+  document.getElementById('patient-modal-title').textContent = 'Add Patient';
+  document.getElementById('p-cin').disabled = false;
+  openModal('patient-modal');
+}
+
+function editPatient(cin) {
+  const p = patients.find(x => x.cin === cin);
+  if (!p) return;
+  document.getElementById('patient-modal-title').textContent = 'Edit Patient';
+  document.getElementById('p-id').value       = p.id || '';
+  document.getElementById('p-cin').value      = p.cin;
+  document.getElementById('p-cin').disabled   = true;
+  document.getElementById('p-fullname').value = p.fullname;
+  document.getElementById('p-mobile').value   = p.mobile;
+  document.getElementById('p-age').value      = p.age;
+  document.getElementById('p-gender').value   = p.gender;
+  openModal('patient-modal');
+}
+
+async function savePatient() {
+  const isEdit = !!document.getElementById('p-id').value;
+  const payload = {
+    id:       isEdit ? parseInt(document.getElementById('p-id').value) : undefined,
+    cin:      document.getElementById('p-cin').value.trim(),
+    fullname: document.getElementById('p-fullname').value.trim(),
+    mobile:   document.getElementById('p-mobile').value.trim(),
+    age:      parseInt(document.getElementById('p-age').value),
+    gender:   document.getElementById('p-gender').value,
+  };
+  if (!payload.cin || !payload.fullname || !payload.mobile || !payload.age || !payload.gender) {
+    toast('Please fill in all required fields.', 'error'); return;
+  }
+  try {
+    if (isEdit) {
+      await apiCall('PUT', '/admin/patients', payload);
+      toast('Patient updated successfully.');
+    } else {
+      await apiCall('POST', '/admin/patients', payload);
+      toast('Patient added successfully.');
+    }
+    closeModal('patient-modal');
+    loadPatients();
+    loadDashboard();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function deletePatient(cin) {
+  if (!confirm(`Delete patient ${cin}? This cannot be undone.`)) return;
+  try {
+    await apiCall('DELETE', `/admin/patients/${cin}`);
+    toast('Patient deleted.');
+    loadPatients();
+    loadDashboard();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── APPOINTMENTS ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+let appointments = [];
+
+async function loadAppointments() {
+  const tbody = document.getElementById('appointment-tbody');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>';
+  try {
+    appointments = await apiCall('GET', '/admin/rendezvous');
+    renderAppointments();
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function renderAppointments() {
+  const tbody = document.getElementById('appointment-tbody');
+  if (!appointments.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No appointments found. Click "+ Add Appointment" to get started.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = appointments.map(a => {
+    const dateStr = a.date ? new Date(a.date).toLocaleString() : '—';
+    return `<tr>
+      <td>${a.idrendezvous}</td>
+      <td>${dateStr}</td>
+      <td>${a.cause}</td>
+      <td>${a.patient || '—'}</td>
+      <td>${a.medecin || '—'}</td>
+      <td>
+        <button class="btn btn-danger" onclick="deleteAppointment(${a.idrendezvous})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function openAppointmentModal() {
+  clearForm(['a-id','a-date','a-cause','a-patient-cin','a-patient-fullname','a-patient-mobile','a-patient-age','a-patient-gender']);
+  document.getElementById('appt-modal-title').textContent = 'Add Appointment';
+  // Populate doctor select
+  const select = document.getElementById('a-medecin-select');
+  select.innerHTML = '<option value="">— select a doctor —</option>';
+  try {
+    const docs = await apiCall('GET', '/admin/medecins');
+    docs.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.fullname;
+      opt.textContent = `${d.fullname} (${d.specialite})`;
+      select.appendChild(opt);
+    });
+  } catch(e) {
+    toast('Could not load doctors list: ' + e.message, 'error');
+  }
+  openModal('appointment-modal');
+}
+
+async function saveAppointment() {
+  const dateVal = document.getElementById('a-date').value;
+  const payload = {
+    patient: {
+      cin:      document.getElementById('a-patient-cin').value.trim(),
+      fullname: document.getElementById('a-patient-fullname').value.trim(),
+      mobile:   document.getElementById('a-patient-mobile').value.trim(),
+      age:      parseInt(document.getElementById('a-patient-age').value) || 0,
+      gender:   document.getElementById('a-patient-gender').value,
+    },
+    medecin: {
+      fullname: document.getElementById('a-medecin-select').value,
+    },
+    rendezvous: {
+      cause: document.getElementById('a-cause').value.trim(),
+      date:  dateVal ? new Date(dateVal).toISOString() : null,
+    }
+  };
+
+  if (!payload.patient.cin || !payload.patient.fullname || !payload.medecin.fullname || !payload.rendezvous.cause) {
+    toast('Please fill in all required fields.', 'error'); return;
+  }
+  if (!payload.patient.gender) {
+    toast('Please select patient gender.', 'error'); return;
+  }
+
+  try {
+    await apiCall('POST', '/admin/rendezvous', payload);
+    toast('Appointment created successfully.');
+    closeModal('appointment-modal');
+    loadAppointments();
+    loadDashboard();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function deleteAppointment(id) {
+  if (!confirm(`Delete appointment #${id}? This cannot be undone.`)) return;
+  try {
+    await apiCall('DELETE', `/admin/rendezvous/${id}`);
+    toast('Appointment deleted.');
+    loadAppointments();
+    loadDashboard();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// Utilities
+// ══════════════════════════════════════════════════════════
+function clearForm(ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') el.value = '';
+    else el.value = '';
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashboard();
+});
+</script>
+</body>
+</html>

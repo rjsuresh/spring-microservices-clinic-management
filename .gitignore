@@ -31,3 +31,34 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Python venv ###
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+*.egg
+
+### Python env files ###
+.env
+*.env.local
+
+### macOS ###
+.DS_Store
+**/.DS_Store
+
+### PDF reports (may contain personal info) ###
+*.pdf
+
+### Tempo runtime data ###
+docker/tempo/tempo-data/
+**/tempo-data/
+
+### Maven build output ###
+**/target/

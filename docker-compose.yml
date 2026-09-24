@@ -1,6 +1,9 @@
 version: "3.8"
 
 services:
+
+  # ─── Observability Stack ──────────────────────────────────────────────────
+
   tempo:
     image: grafana/tempo:2.2.2
     command: [ "-config.file=/etc/tempo.yaml" ]
@@ -8,14 +11,24 @@ services:
       - ./docker/tempo/tempo.yml:/etc/tempo.yaml:ro
       - ./docker/tempo/tempo-data:/tmp/tempo
     ports:
-      - "3110:3100"  # Tempo
-      - "9411:9411"  # Zipkin
+      - "3200:3200"   # Tempo HTTP API
+      - "9411:9411"   # Zipkin ingest
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3200/ready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.9.2
     command: [ "-config.file=/etc/loki/local-config.yaml" ]
     ports:
       - "3100:3100"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3100/ready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   prometheus:
     image: prom/prometheus:v2.46.0
@@ -23,40 +36,138 @@ services:
       - --enable-feature=exemplar-storage
       - --config.file=/etc/prometheus/prometheus.yml
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/Prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   grafana:
     image: grafana/grafana:10.1.0
     volumes:
-      - ./docker/grafana:/etc/grafana/provisioning/datasources:ro
+      - ./docker/Grafana:/etc/grafana/provisioning/datasources:ro
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
     ports:
       - "3000:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+
+  # ─── Application Services ─────────────────────────────────────────────────
+
   eureka-server:
     build:
-      context: ./EurekaServer  # Chemin vers le dossier contenant le service Eureka
+      context: ./EurekaServer
     ports:
-      - "8761:8761"  # Port exposé par le service Eureka
-
-  gestion-medecins:
-    build:
-      context: ./Service.de.Gestion.des.Medecins  # Chemin vers le service de gestion des médecins
-    ports:
-      - "8082:8082"  # Port exposé par le service de gestion des médecins
+      - "8761:8761"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8761/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
 
   gestion-patients:
     build:
-      context: ./Service.de.Gestion.des.Patients  # Chemin vers le service de gestion des patients
+      context: ./Service.de.Gestion.des.Patients
     ports:
-      - "8080:8080"  # Port exposé par le service de gestion des patients
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://tempo:9411/api/v2/spans
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+  gestion-medecins:
+    build:
+      context: ./Service.de.Gestion.des.Medecins
+    ports:
+      - "8082:8082"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://tempo:9411/api/v2/spans
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8082/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
 
   gestion-rendezvous:
     build:
-      context: ./Service.de.Gestion.des.Rendez-vous  # Chemin vers le service de gestion des rendez-vous
+      context: ./Service.de.Gestion.des.Rendez-vous
     ports:
-      - "8081:8081"  # Port exposé par le service de gestion des rendez-vous
+      - "8081:8081"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://tempo:9411/api/v2/spans
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8081/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+  # ─── Python Admin Service ─────────────────────────────────────────────────
+
+  admin-service:
+    build:
+      context: ./admin-service
+    ports:
+      - "9001:9000"
+    environment:
+      - PATIENTS_SERVICE_URL=http://gestion-patients:8080
+      - MEDECINS_SERVICE_URL=http://gestion-medecins:8082
+      - RENDEZVOUS_SERVICE_URL=http://gestion-rendezvous:8081
+      - EUREKA_SERVICE_URL=http://eureka-server:8761
+    depends_on:
+      gestion-patients:
+        condition: service_healthy
+      gestion-medecins:
+        condition: service_healthy
+      gestion-rendezvous:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
